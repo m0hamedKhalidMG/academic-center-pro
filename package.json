@@ -12,7 +12,6 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
-    "prepare": "husky install",
     "migrate": "node ./migrations/migrate.js",
     "seed": "node ./seeders/seed.js",
     "prod": "NODE_ENV=production node server.js",
