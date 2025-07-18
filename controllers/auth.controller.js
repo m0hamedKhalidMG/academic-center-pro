@@ -34,7 +34,8 @@ exports.login = async (req, res, next) => {
       return next(new ErrorResponse('Invalid credentials', 401));
     }
 
-    if (!user.isActive) {
+    // Skip isActive check for admin users
+    if (role !== 'admin' && !user.isActive) {
       return next(new ErrorResponse('Account is deactivated', 401));
     }
 
