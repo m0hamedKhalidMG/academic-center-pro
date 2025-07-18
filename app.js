@@ -51,11 +51,11 @@ app.use(cookieParser());
 // Enable CORS
 app.use(cors ({
 
-    origin:"*",
+    origin:"http://localhost:3000",
     credentials: true
 }) );
 app.use(function (req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
   res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Allow-Methods", "GET,PATCH,PUT,POST,DELETE");
   res.header("Access-Control-Expose-Headers", "Content-Length");
