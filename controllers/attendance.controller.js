@@ -21,9 +21,7 @@ exports.registerAttendance = async (req, res, next) => {
       return next(new ErrorResponse("Student not found", 404));
     }
 
-    if (!student.isActive) {
-      return next(new ErrorResponse("Student account is inactive", 400));
-    }
+   
 
     const activeSuspension = await Suspension.findOne({
       student: student._id,
