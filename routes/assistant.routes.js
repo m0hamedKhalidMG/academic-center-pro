@@ -10,7 +10,8 @@ const {
   getMyRecordedPayments,
   getMyIssuedSuspensions,
   suspendStudent,
-  liftSuspension
+  liftSuspension,
+  getActiveStudentSuspensions
 } = require('../controllers/assistant.controller');
 
 // Apply authentication middleware to all routes
@@ -45,7 +46,7 @@ router.route('/my-suspensions')
 router.route('/suspend')
   .post(suspendStudent);             // Suspend a student
 
-router.route('/lift-suspension/:suspensionId')
+router.route('/lift-suspension/:studentId')
   .put(liftSuspension);              // Lift a suspension
-
+router.get('/student-suspensions/:studentId', getActiveStudentSuspensions);
 module.exports = router;
