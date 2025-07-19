@@ -6,13 +6,14 @@ const {
   getStudents,
   getStudent,
   updateStudent,
-  deactivateStudent
+  deactivateStudent,
+  getStudentByCardCode
 } = require('../controllers/student.controller');
 
 // All routes protected and only accessible by assistants
 router.use(protect);
-router.use(authorize('assistant'));
-
+router.use(authorize('assistant','admin'));
+router.get('/scan/:cardCode', getStudentByCardCode);
 router.route('/')
   .post(createStudent)
   .get(getStudents);
