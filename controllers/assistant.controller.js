@@ -280,7 +280,8 @@ exports.suspendStudent = async (req, res, next) => {
 
     // Send notification to parent
     // await sendSuspensionNotice(student, suspension);
-
+ student.isActive = false; // Set to false when suspended
+    await student.save();
     res.status(201).json({
       success: true,
       data: suspension
@@ -295,31 +296,109 @@ exports.suspendStudent = async (req, res, next) => {
 // @access  Private/Assistant
 exports.liftSuspension = async (req, res, next) => {
   try {
-    const suspension = await Suspension.findById(req.params.suspensionId);
+    // Find all suspensions for the specified student
+    const suspensions = await Suspension.find({ student: req.params.studentId });
+    const student = await Student.findById(req.params.studentId);
 
-    if (!suspension) {
-      return next(new ErrorResponse('Suspension not found', 404));
+    if (!student) {
+      return next(new ErrorResponse('Student not found', 404));
     }
 
-    // Only the assistant who issued the suspension can lift it
-    if (suspension.issuedBy.toString() !== req.user.id) {
-      return next(new ErrorResponse('Not authorized to lift this suspension', 403));
+    if (!suspensions || suspensions.length === 0) {
+      return next(new ErrorResponse('No suspensions found for this student', 404));
     }
 
-    // For temporary suspensions, set end date to now
-    if (suspension.type === 'temporary') {
-      suspension.endDate = new Date();
-      await suspension.save();
-    } else {
-      // For permanent suspensions, delete the record
-      await suspension.remove();
+    // Filter suspensions issued by the current user (assistant)
+    const userSuspensions = suspensions.filter(suspension => 
+      suspension.issuedBy.toString() === req.user.id
+    );
+
+    if (userSuspensions.length === 0) {
+      return next(new ErrorResponse('No suspensions issued by you for this student', 403));
     }
+
+    // Process each suspension
+    for (const suspension of userSuspensions) {
+      if (suspension.type === 'temporary') {
+        // For temporary suspensions, set end date to now
+        suspension.endDate = new Date();
+        await suspension.save();
+      } else {
+        // For permanent suspensions, delete the record
+        await suspension.deleteOne();
+      }
+    }
+
+    // Check if student has any remaining active suspensions
+    const activeSuspensions = await Suspension.find({
+      student: req.params.studentId,
+      $or: [
+        { type: 'permanent' },
+        { 
+          type: 'temporary',
+          endDate: { $gte: new Date() } // Only suspensions that haven't expired
+        }
+      ]
+    });
+
+    // Update student's active status (true if no active suspensions remain)
+    student.isActive = activeSuspensions.length === 0;
+    await student.save();
 
     res.status(200).json({
       success: true,
-      data: {}
+      message: `${userSuspensions.length} suspension(s) lifted successfully`,
+      data: {
+        student: {
+          id: student._id,
+          isActive: student.isActive
+        }
+      }
     });
   } catch (err) {
     next(err);
   }
 };
+
+
+// @desc    Get active suspensions for a student
+// @route   GET /api/v1/assistants/student-suspensions/:studentId
+// @access  Private (Assistant/Admin)
+exports.getActiveStudentSuspensions = async (req, res, next) => {
+  try {
+    const currentDate = new Date();
+    
+    const suspensions = await Suspension.find({ 
+      student: req.params.studentId 
+    }).populate('issuedBy', 'name email');
+
+    // Categorize suspensions
+    const result = {
+      active: [],
+      expired: [],
+      permanent: []
+    };
+
+    suspensions.forEach(suspension => {
+      if (suspension.type === 'permanent') { 
+        result.permanent.push(suspension);
+      } else if (suspension.type === 'temporary') {
+        if (suspension.startDate <= currentDate && suspension.endDate >= currentDate) {
+          result.active.push(suspension);
+        } else {
+          result.expired.push(suspension);
+        }
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+    
+  } catch (err) {
+    next(err);
+  }
+};
+
+
