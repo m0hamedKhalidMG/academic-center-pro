@@ -22,9 +22,7 @@ const testRoutes = require('./routes/test.routes');
 
 const app = express();
 
-// -------------------- Security and Basic Middleware -------------------- //
-
-// Set security HTTP headers
+// Security headers
 app.use(helmet());
 
 // Development logging
@@ -32,7 +30,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Limit requests from the same IP
+// Rate limit
 const limiter = rateLimit({
   max: 100,
   windowMs: 60 * 60 * 1000,
@@ -40,40 +38,41 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Body parser, reading data from body into req.body
+// Body parser
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 
 
-// -------------------- CORS Configuration -------------------- //
+
+// -------------------- CORS -------------------- //
 const allowedOrigins = [
-  'http://localhost:3000',  // Local development
-  'https://academic-center-pro-pi94.vercel.app' // Production frontend
+  'http://localhost:3000',  // Local
+  'https://academic-center-pro-pi94.vercel.app'  // Production
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
+    if (!origin) return callback(null, true); // Allow curl/postman
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: [
-    'Accept',
-    'Authorization',
-    'x-auth-token',
-    'Content-Type',
-    'X-Requested-With',
-    'Range'
+    'Accept','Authorization','x-auth-token','Content-Type','X-Requested-With','Range'
   ],
   exposedHeaders: ['Content-Length']
 }));
 
-// Handle preflight (OPTIONS) requests for all routes
-app.options('*', cors());
+// Preflight response for all routes
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Accept, Authorization, x-auth-token, Content-Type, X-Requested-With, Range');
+  return res.sendStatus(204);
+});
 
 // -------------------- Routes -------------------- //
 app.use('/api/v1/auth', authRoutes);
@@ -84,7 +83,7 @@ app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/test', testRoutes);
 
-// -------------------- 404 Handler -------------------- //
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -98,7 +97,7 @@ app.use((req, res) => {
   });
 });
 
-// -------------------- Global Error Handler -------------------- //
+// Global error handler
 app.use(errorHandler);
 
 module.exports = app;
