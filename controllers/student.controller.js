@@ -50,7 +50,7 @@ exports.createStudent = async (req, res, next) => {
 // @access  Private/Assistant
 exports.getStudents = async (req, res, next) => {
   try {
-    const students = await Student.find({ isActive: true });
+    const students = await Student.find();
 
     res.status(200).json({
       success: true,
