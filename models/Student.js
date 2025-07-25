@@ -6,8 +6,7 @@ const StudentSchema = new mongoose.Schema({
     required: true
   },
   photo: {
-    type: String,
-    required: true
+    type: String
   },
   phoneNumber: {
     type: String,
