@@ -4,12 +4,7 @@ const Attendance = require('../models/Attendance');
 const Payment = require('../models/Payment');
 const Suspension = require('../models/Suspension');
 const {ErrorResponse} = require('../utils/errorHandler');
-const { 
-  sendAbsenceNotification,
-  sendPaymentReminder,
-  sendSuspensionNotice,
-  sendPaymentConfirmation
-} = require('../services/notification.service');
+
 const bcrypt = require('bcryptjs');
 
 // @desc    Get assistant profile
