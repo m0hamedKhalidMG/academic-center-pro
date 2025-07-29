@@ -2,7 +2,7 @@ const Attendance = require('../models/Attendance');
 const Student = require('../models/Student');
 const Suspension = require('../models/Suspension');
 const {ErrorResponse} = require('../utils/errorHandler');
-const { sendAbsenceNotification } = require('../services/notification.service');
+const Group = require('../models/Group');
 
 // @desc    Register attendance via card scan
 // @route   POST /api/v1/attendance/scan
@@ -259,6 +259,238 @@ exports.getAttendanceByDateAndGroup = async (req, res, next) => {
       data: {
         date: selectedDate.toISOString().split('T')[0],
         groupCode,
+        totalStudents: groupStudents.length,
+        presentCount: presentStudents.length,
+        absentCount: absentStudents.length,
+        presentStudents,
+        absentStudents
+      }
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+exports.getGroupAttendanceReport = async (req, res, next) => {
+  try {
+    const { month, year, groupCode } = req.query;
+
+    // Validate input
+    if (!month || !year || !groupCode) {
+      return next(new ErrorResponse('Month, year and groupCode are required', 400));
+    }
+
+    // Get the group with its schedule
+    const group = await Group.findOne({ code: groupCode });
+    if (!group) {
+      return next(new ErrorResponse('Group not found', 404));
+    }
+
+    // Get all active students in the group
+    const students = await Student.find({ 
+      groupCode,
+      isActive: true 
+    }).select('_id fullName  parentWhatsAppNumber phoneNumber attendanceCardCode  ');
+
+    // Calculate date range for the month
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0); // Last day of month
+
+    // Get all attendance records for these students in this month
+    const attendanceRecords = await Attendance.find({
+      student: { $in: students.map(s => s._id) },
+      date: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    }).sort({ date: 1 });
+
+    // Get group's scheduled days (e.g., ['monday', 'wednesday'])
+    const scheduledDays = group.schedule.map(s => s.day.toLowerCase());
+
+    // Helper to check if a date is a scheduled day
+    const isScheduledDay = (date) => {
+      const day = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      return scheduledDays.includes(day);
+    };
+
+    // Generate all scheduled dates in the month
+    const scheduledDates = [];
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      if (isScheduledDay(currentDate)) {
+        scheduledDates.push(new Date(currentDate));
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Prepare report data structure
+    const report = {
+      groupCode,
+      groupName: group.code, // or any other group identifier you have
+      academicLevel: group.academicLevel,
+      month: `${year}-${month.toString().padStart(2, '0')}`,
+      totalScheduledDays: scheduledDates.length,
+      students: []
+    };
+
+    // Process each student
+    for (const student of students) {
+      const studentReport = {
+        studentId: student._id,
+        fullName: student.fullName,
+        parentWhatsAppNumber: student.parentWhatsAppNumber,
+        attendanceDays: 0,
+        absentDays: 0,
+        attendanceRate: 0,
+        details: []
+      };
+
+      // Check each scheduled date
+      for (const date of scheduledDates) {
+        const attendance = attendanceRecords.find(record => 
+          record.student.equals(student._id) && 
+          record.date.toDateString() === date.toDateString()
+        );
+
+        studentReport.details.push({
+          date: date.toISOString().split('T')[0],
+          day: date.toLocaleDateString('en-US', { weekday: 'long' }),
+          status: attendance ? 'present' : 'absent',
+          time: attendance ? attendance.scannedAt : null
+        });
+
+        if (attendance) {
+          studentReport.attendanceDays++;
+        } else {
+          studentReport.absentDays++;
+        }
+      }
+
+      // Calculate attendance rate
+      if (scheduledDates.length > 0) {
+        studentReport.attendanceRate = 
+          Math.round((studentReport.attendanceDays / scheduledDates.length) * 100);
+      }
+
+      report.students.push(studentReport);
+    }
+
+    // Calculate group statistics
+    report.totalStudents = students.length;
+    report.averageAttendanceRate = report.students.length > 0 ?
+      Math.round(report.students.reduce((sum, student) => sum + student.attendanceRate, 0) / report.students.length) :
+      0;
+
+    res.status(200).json({
+      success: true,
+      data: report
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+exports.getDailyGroupAttendance = async (req, res, next) => {
+  try {
+    const { date, groupCode } = req.query;
+
+    if (!date || !groupCode) {
+      return next(new ErrorResponse('Both date and groupCode are required', 400));
+    }
+
+    const timeZone = "Europe/Bucharest";
+    const selectedDate = new Date(date);
+    selectedDate.setUTCHours(0, 0, 0, 0); // لتوحيد اليوم من منتصف الليل UTC
+console.log(selectedDate)
+    // Get group
+    const group = await Group.findOne({ code: groupCode });
+    if (!group) {
+      return next(new ErrorResponse('Group not found', 404));
+    }
+
+    // تحديد اليوم في الأسبوع بناءً على التوقيت المطلوب
+    const getDayOfWeek = (date, timeZone) => {
+      return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone })
+        .format(date)
+        .toLowerCase();
+    };
+    const dayOfWeek = getDayOfWeek(selectedDate, timeZone);
+
+    // تحقق من أن اليوم موجود في جدول المجموعة
+    const isScheduledDay = group.schedule.some(s => s.day.toLowerCase() === dayOfWeek);
+    if (!isScheduledDay) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          date: selectedDate.toISOString().split('T')[0],
+          day: dayOfWeek,
+          groupCode,
+          isScheduledDay: false,
+          message: 'No classes scheduled for this group on this day'
+        }
+      });
+    }
+
+    // الطلاب النشطون
+    const groupStudents = await Student.find({ 
+      groupCode,
+      isActive: true 
+    }).select('fullName  parentWhatsAppNumber');
+
+    // جلب الحضور في هذا التاريخ
+    const nextDay = new Date(selectedDate);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+    const attendanceRecords = await Attendance.find({
+      date: {
+        $gte: selectedDate,
+        $lt: nextDay
+      },
+      student: { $in: groupStudents.map(s => s._id) }
+    }).populate('student', 'fullName  parentWhatsAppNumber phoneNumber attendanceCardCode');
+
+    const formatDateTime = (date, timeZone) => {
+      const options = {
+        timeZone,
+        weekday: "short",
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short",
+      };
+      return date.toLocaleString("en-US", options);
+    };
+
+    // الطلاب الحاضرين
+    const presentStudents = attendanceRecords.map(record => ({
+      student: record.student,
+      attendanceTime: formatDateTime(record.scannedAt, timeZone),
+      status: 'present'
+    }));
+
+    // الطلاب الغائبين
+    const absentStudents = groupStudents.filter(student => 
+      !attendanceRecords.some(record => record.student._id.equals(student._id))
+    ).map(student => ({
+      student,
+      status: 'absent'
+    }));
+
+    // الإخراج النهائي
+    res.status(200).json({
+      success: true,
+      data: {
+        date: selectedDate.toISOString().split('T')[0],
+        day: dayOfWeek,
+        groupCode,
+        isScheduledDay: true,
         totalStudents: groupStudents.length,
         presentCount: presentStudents.length,
         absentCount: absentStudents.length,
