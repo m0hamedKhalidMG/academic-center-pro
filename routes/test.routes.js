@@ -1,7 +1,6 @@
 // routes/test.routes.js
 const express = require('express');
 const router = express.Router();
-const twilioService = require('../services/twilio.service');
 
 router.get('/test-whatsapp', async (req, res) => {
   const result = await twilioService.sendWhatsAppMessage(
