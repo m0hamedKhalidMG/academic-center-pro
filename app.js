@@ -8,6 +8,7 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
 const {errorHandler} = require('./utils/errorHandler');
+const groupRoutes = require('./routes/group.routes');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -77,6 +78,7 @@ app.use('/api/v1/students', studentRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 const testRoutes = require('./routes/test.routes');
+app.use('/api/v1/groups', groupRoutes);
 app.use('/api/v1/test', testRoutes);
 // Handle unhandled routes
 // At the VERY END of your middleware chain (after all other routes)
