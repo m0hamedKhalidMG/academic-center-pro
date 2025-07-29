@@ -1,7 +1,6 @@
 const Payment = require('../models/Payment');
 const Student = require('../models/Student');
 const {ErrorResponse} = require('../utils/errorHandler');
-const { sendPaymentReminder } = require('../services/notification.service');
 
 // @desc    Record payment
 // @route   POST /api/v1/payments
