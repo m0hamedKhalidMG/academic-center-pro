@@ -56,7 +56,7 @@ app.use(cors ({
     credentials: true
 }) );
 app.use(function (req, res, next) {
-  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+  res.header("Access-Control-Allow-Origin", "https://academic-center-sys.vercel.app");
   res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Allow-Methods", "GET,PATCH,PUT,POST,DELETE");
   res.header("Access-Control-Expose-Headers", "Content-Length");
