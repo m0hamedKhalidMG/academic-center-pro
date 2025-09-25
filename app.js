@@ -50,25 +50,40 @@ app.use(cookieParser());
 // app.use(hpp());
 
 // Enable CORS
-app.use(cors ({
-
-    origin:"https://academic-center-sys.vercel.app",
-    credentials: true
-}) );
+const allowedOrigins = [
+  "https://academic-center-sys.vercel.app",
+  "http://54.82.231.40"
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    // السماح لو الريكويست جاي من قائمة origins
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
 app.use(function (req, res, next) {
-  res.header("Access-Control-Allow-Origin", "https://academic-center-sys.vercel.app");
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
   res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Methods", "GET,PATCH,PUT,POST,DELETE");
+  res.header("Access-Control-Allow-Methods", "GET, PATCH, PUT, POST, DELETE, OPTIONS");
   res.header("Access-Control-Expose-Headers", "Content-Length");
   res.header(
     "Access-Control-Allow-Headers",
-    "Accept, Authorization,x-auth-token, Content-Type, X-Requested-With, Range"
+    "Accept, Authorization, x-auth-token, Content-Type, X-Requested-With, Range"
   );
+
+  // ✅ رد على preflight requests
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
-  } else {
-    return next();
   }
+
+  next();
 });
 // Routes
 app.use('/api/v1/auth', authRoutes);
