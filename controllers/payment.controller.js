@@ -144,7 +144,8 @@ exports.getLatePayments = async (req, res, next) => {
           name: student.fullName,
           groupCode: student.groupCode,
           level: student.academicLevel,
-          parentContact: student.parentWhatsAppNumber
+          parentContact: student.parentWhatsAppNumber,
+          joinDate: student.createdAt
         }))
       }
     });
