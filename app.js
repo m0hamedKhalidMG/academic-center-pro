@@ -52,7 +52,7 @@ app.use(cookieParser());
 // Enable CORS
 app.use(cors ({
 
-    origin:"http://localhost:3000",
+    origin:"https://academic-center-sys.vercel.app",
     credentials: true
 }) );
 app.use(function (req, res, next) {
