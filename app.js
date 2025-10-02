@@ -52,7 +52,8 @@ app.use(cookieParser());
 // Enable CORS
 const allowedOrigins = [
   "https://academic-center-sys.vercel.app",
-  "http://54.82.231.40"
+  "http://54.82.231.40",
+  "http://localhost:3000"
 ];
 app.use(cors({
   origin: function (origin, callback) {
