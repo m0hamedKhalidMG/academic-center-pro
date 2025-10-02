@@ -14,17 +14,17 @@ router.use(protect);
 
 // Assistant-only routes
 router.route('/')
-  .post(authorize('assistant'), recordPayment);
+  .post(authorize('assistant','admin'), recordPayment);
 
 router.route('/student/:studentId')
-  .get(authorize('assistant'), getStudentPayments);
+  .get(authorize('assistant','admin'), getStudentPayments);
 
 router.route('/late')
-  .get(authorize('assistant'), getLatePayments)
-  .post(authorize('assistant'), sendLatePaymentReminders);
+  .get(authorize('assistant','admin'), getLatePayments)
+  .post(authorize('assistant','admin'), sendLatePaymentReminders);
 
 // Admin-only routes
 router.route('/summary')
-  .get(authorize('admin'), getPaymentSummary);
+  .get(authorize('admin','admin'), getPaymentSummary);
 
 module.exports = router;
