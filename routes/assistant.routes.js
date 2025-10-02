@@ -16,7 +16,7 @@ const {
 
 // Apply authentication middleware to all routes
 router.use(protect);
-router.use(authorize('assistant'));
+router.use(authorize('assistant','admin'));
 
 // Profile routes
 router.route('/profile')
