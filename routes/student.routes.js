@@ -7,7 +7,8 @@ const {
   getStudent,
   updateStudent,
   deactivateStudent,
-  getStudentByCardCode
+  getStudentByCardCode,
+  deleteStudent   
 } = require('../controllers/student.controller');
 
 // All routes protected and only accessible by assistants
@@ -22,5 +23,6 @@ router.route('/:id')
   .get(getStudent)
   .put(updateStudent)
   .delete(deactivateStudent);
-
+// 🔥 Permanently delete a student and all related data (admin only)
+router.delete('/:id/permanent', authorize('admin','assistant'), deleteStudent);
 module.exports = router;
