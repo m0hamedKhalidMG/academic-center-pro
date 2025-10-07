@@ -232,3 +232,32 @@ exports.getStudentByCardCode = async (req, res, next) => {
     next(err);
   }
 };
+// @desc    Permanently delete student account
+// @route   DELETE /api/v1/students/:id/permanent
+// @access  Private/Admin
+exports.deleteStudent = async (req, res, next) => {
+  try {
+    const student = await Student.findById(req.params.id);
+
+    if (!student) {
+      return next(new ErrorResponse('Student not found', 404));
+    }
+
+    // Delete related records (optional cleanup)
+    await Suspension.deleteMany({ student: student._id });
+    await Attendance.deleteMany({ student: student._id });
+    await Payment.deleteMany({ student: student._id });
+
+    // Delete student record
+    await student.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Student and related records deleted successfully',
+      data: {}
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
