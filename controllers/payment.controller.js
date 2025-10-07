@@ -94,40 +94,39 @@ exports.getLatePayments = async (req, res, next) => {
     const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
     const currentYear = currentDate.getFullYear();
 
-    // Calculate cutoff date (10th of current month)
+    // تحديد تاريخ cutoff (اليوم العاشر من الشهر الحالي)
     const cutoffDate = new Date(currentYear, currentMonth - 1, 10);
 
-    // Only consider late payments if current date is after cutoff
+    // هل نحن بعد يوم 10 (أي دخلنا فترة التأخير)
     const isLatePeriod = currentDate > cutoffDate;
 
-    // Base query for unpaid students
+    // الفلترة الأساسية للطلاب النشطين فقط
     let query = { isActive: true };
+    if (groupCode) query.groupCode = groupCode;
 
-    // Apply group filter if provided
-    if (groupCode) {
-      query.groupCode = groupCode;
-    }
-
-    // Get all active students (filtered by group if specified)
+    // جلب كل الطلاب النشطين (أو بحسب المجموعة)
     const students = await Student.find(query);
 
-    // Get paid students for the target month
-    const targetMonth = month ? parseInt(month) : currentMonth - 1;
-    const targetYear = month ? currentYear : (currentMonth === 1 ? currentYear - 1 : currentYear);
+    // تحديد الشهر المستهدف (افتراضي: الشهر الحالي)
+    const targetMonth = month ? parseInt(month) : currentMonth;
+    const targetYear = currentYear;
 
+    // جلب الطلاب الذين دفعوا في الشهر المطلوب
     const paidStudents = await Payment.find({
       month: targetMonth,
       year: targetYear,
       status: 'paid'
     }).distinct('student');
 
-    // Find unpaid students
-    const unpaidStudents = students.filter(student => 
-      !paidStudents.includes(student._id.toString())
+    // ✅ تحويل الـ ObjectIds إلى strings للمقارنة الصحيحة
+    const paidStudentIds = paidStudents.map(id => id.toString());
+
+    // إيجاد الطلاب الذين لم يدفعوا
+    const unpaidStudents = students.filter(student =>
+      !paidStudentIds.includes(student._id.toString())
     );
 
-    // Only return late payments if we're in the late period
-    // or if specifically querying a past month
+    // ✅ إرجاع فقط الطلاب المتأخرين إذا نحن فعلاً بعد يوم 10 أو نستعلم عن شهر محدد
     const results = (isLatePeriod || month) ? unpaidStudents : [];
 
     res.status(200).json({
